@@ -1,3 +1,32 @@
+/* ================= SERVIDOR ================= */
+
+let servidorActual = localStorage.getItem("srv") || "ody";
+
+const srvOk  = document.getElementById("srvOk");
+const srvOdy = document.getElementById("srvOdy");
+
+/* pintar botón activo */
+function pintarServidor(){
+  srvOk?.classList.toggle("activo", servidorActual === "ok");
+  srvOdy?.classList.toggle("activo", servidorActual === "ody");
+}
+pintarServidor();
+
+srvOk?.addEventListener("click", () => {
+  servidorActual = "ok";
+  localStorage.setItem("srv","ok");
+  pintarServidor();
+  reproducir(episodioActual);
+});
+
+srvOdy?.addEventListener("click", () => {
+  servidorActual = "ody";
+  localStorage.setItem("srv","ody");
+  pintarServidor();
+  reproducir(episodioActual);
+});
+
+
 /* ================= EPISODIOS ================= */
 
 const botones = document.querySelectorAll('.episodios button');
@@ -13,17 +42,16 @@ const nextCount  = document.getElementById("nextCount");
 const cancelNext = document.getElementById("cancelNext");
 
 let vistos = JSON.parse(localStorage.getItem('episodiosVistos')) || [];
-let episodioActual = parseInt(localStorage.getItem("episodioActual")) || 0;
+let episodioActual = 0;
 
 let nextTimer = null;
 let nextCountdown = null;
 
 
-/* ================= MARCAR VISTOS ================= */
-
+/* marcar vistos */
 botones.forEach((btn, index) => {
 
-  if (vistos.includes(btn.dataset.odysee)) {
+  if (vistos.includes(btn.dataset.video)) {
     btn.classList.add("visto");
   }
 
@@ -31,8 +59,7 @@ botones.forEach((btn, index) => {
 });
 
 
-/* ================= CONTROLES ================= */
-
+/* controles */
 btnAnterior?.addEventListener('click', () => {
   if (episodioActual > 0) reproducir(episodioActual - 1);
 });
@@ -42,9 +69,7 @@ btnActual?.addEventListener('click', () => {
 });
 
 btnSiguiente?.addEventListener('click', () => {
-  if (episodioActual < botones.length - 1) {
-    reproducir(episodioActual + 1);
-  }
+  if (episodioActual < botones.length - 1) reproducir(episodioActual + 1);
 });
 
 
@@ -53,20 +78,34 @@ btnSiguiente?.addEventListener('click', () => {
 function reproducir(index){
 
   episodioActual = index;
-  localStorage.setItem("episodioActual", index);
-
   const btn = botones[index];
   if (!btn) return;
 
+  const id  = btn.dataset.video;
   const ody = btn.dataset.odysee;
 
-  iframe.src = ody + "?autoplay=1";
+  /* fallback automático inteligente */
+  let servidor = servidorActual;
 
+  if (servidor === "ody" && !ody){
+    servidor = "ok";
+  }
+
+  srvOdy?.classList.toggle("disabled", !ody);
+
+  let src;
+
+  if (servidor === "ody" && ody){
+    src = ody + "?autoplay=true";
+  }else{
+    src = `https://ok.ru/videoembed/${id}?nochat=1&autoplay=1&hd=1`;
+  }
+
+  iframe.src = src;
 
   /* guardar vistos */
-
-  if (!vistos.includes(ody)){
-    vistos.push(ody);
+  if (!vistos.includes(id)){
+    vistos.push(id);
     localStorage.setItem('episodiosVistos', JSON.stringify(vistos));
   }
 
@@ -102,35 +141,17 @@ function reproducir(index){
 
     },1000);
 
-  }, 23 * 60 * 1000); // duración episodio
-
+  }, 23 * 60 * 1000); // ajusta duración episodio
 
   cancelNext.onclick = () => {
     overlay.classList.remove("show");
     clearInterval(nextCountdown);
   };
 
-  player.scrollIntoView({
-    behavior:"smooth",
-    block:"center"
-  });
-
+  player.scrollIntoView({behavior:"smooth",block:"center"});
 }
 
 
 /* ================= START ================= */
 
-window.addEventListener("load", () => {
-
-  if(botones.length > 0){
-
-    /* evitar error si guardó episodio mayor */
-    if(episodioActual >= botones.length){
-      episodioActual = 0;
-    }
-
-    reproducir(episodioActual);
-
-  }
-
-});
+reproducir(episodioActual);
